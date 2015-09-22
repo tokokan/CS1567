@@ -21,6 +21,8 @@ def send_commands():
     global command #the value of this change as we accelerate/decelerate
     global command2 #This is what the user type in, value don't change
     global mode
+    commandMode = 0
+    rawinput = 0
 
     START_SPEED = 0.05
 
@@ -36,49 +38,59 @@ def send_commands():
     #I think its better to reset the odom after user input direction
     while not rospy.is_shutdown():
 
-    	mode, vel, distance = raw_input("please enter a command: ").split()
+        #commandMode = raw_input("Select mode (1 for single, 2 for multiple): ")
+        '''        
+        if int(commandMode) == 1:
+                mode, vel, distance = raw_input("please enter a command: ").split()
+        else:
+        '''
+        rawinput = raw_input("please enter one or more commands: ").split(",")
+        
+        #rawinput = rawinput.split(",")
         
         
-        odomPub.publish(Empty())
-        rospy.sleep(1)
+        for i in rawinput:
+                odomPub.publish(Empty())
+                rospy.sleep(1)
+       
+	        print "sending command"
+                mode, vel, distance = i.split()
+	        if mode == 'F':
+		        command.linear.x = START_SPEED
+		        command.angular.z = 0
+                        command2.linear.x = float(vel)
+		        command2.angular.z = 0
+        	elif mode == 'B':
+                        command.linear.x = -START_SPEED
+        		command.angular.z = 0
+        		command2.linear.x = -float(vel)
+        		command2.angular.z = 0
+        	elif mode == 'R':
+        		command.linear.x = 0
+        		command.angular.z = -START_SPEED
+                        command2.linear.x = 0
+        		command2.angular.z = -float(vel)
+        	elif mode == 'L':
+        		command.linear.x = 0
+        		command.angular.z = START_SPEED
+                        command2.linear.x = 0
+        		command2.angular.z = float(vel)
+                #add S mode to reset the odom mannually, we still has to but in 2 other random numbers tho
+                elif mode == 'S':
+                        #odomPub.publish(Empty())
+                        #rospy.sleep(1)
+                        continue
 
-	print "sending command"
-	if mode == 'F':
-		command.linear.x = START_SPEED
-		command.angular.z = 0
-                command2.linear.x = float(vel)
-		command2.angular.z = 0
-	elif mode == 'B':
-                command.linear.x = -START_SPEED
-		command.angular.z = 0
-		command2.linear.x = -float(vel)
-		command2.angular.z = 0
-	elif mode == 'R':
-		command.linear.x = 0
-		command.angular.z = -START_SPEED
-                command2.linear.x = 0
-		command2.angular.z = -float(vel)
-	elif mode == 'L':
-		command.linear.x = 0
-		command.angular.z = START_SPEED
-                command2.linear.x = 0
-		command2.angular.z = float(vel)
-        #add S mode to reset the odom mannually, we still has to but in 2 other random numbers tho
-        elif mode == 'S':
-                #odomPub.publish(Empty())
-                #rospy.sleep(1)
-                continue
+                command.linear.z = float(distance)
 
-        command.linear.z = float(distance)
+	        pub.publish(command)
 
-	pub.publish(command)
-
-	isWaiting = 1
+	        isWaiting = 1
 	
-    	while isWaiting:
-		pass
+    	        while isWaiting:
+		        pass
 
-        pub.publish(command)
+                pub.publish(command)
 
 	
 def bumperCallback(data):
@@ -104,8 +116,11 @@ def odomCallback(data):
 	global command
 	global mode
         global command2
+        #time =0
+        state = 0
 
         SPEED_DELTA = 0.005
+        SPEED_DELTA2 = 0.01
         DECELERATE_AT = 0.5 
         MINIMUM_SPEED = 0.1
         
@@ -122,14 +137,22 @@ def odomCallback(data):
 		print degree, command.linear.z, mode
 		if mode == 'F':
                         if data.pose.pose.position.x >= command.linear.z:
-			        print "sending stop"		
+                                '''                                
+                                if state == 0:
+                                        time = time.clock()
+                                        state = 1
+                		else:
+                                        time -= time.clock()
+                                        print time
+                                '''	        
+                                print "sending stop"		
 			        command.linear.x = 0.0
 			        command.angular.z = 0.0
 			        isWaiting = 0
                         elif data.pose.pose.position.x >= command.linear.z*DECELERATE_AT:
-                                if command.linear.x - SPEED_DELTA >= MINIMUM_SPEED:
+                                if command.linear.x - SPEED_DELTA2 >= MINIMUM_SPEED:
                                         print "decreasing speed!"
-                                        command.linear.x -= SPEED_DELTA
+                                        command.linear.x -= SPEED_DELTA2
                                         pub.publish(command)                                   
                         else:
                                 if command.linear.x < command2.linear.x:
@@ -145,9 +168,9 @@ def odomCallback(data):
 			        command.angular.z = 0.0
 			        isWaiting = 0
                         elif data.pose.pose.position.x <= -(command.linear.z*DECELERATE_AT):
-                                if command.linear.x + SPEED_DELTA <= -MINIMUM_SPEED:
+                                if command.linear.x + SPEED_DELTA2 <= -MINIMUM_SPEED:
                                         print "decreasing speed!"
-                                        command.linear.x += SPEED_DELTA
+                                        command.linear.x += SPEED_DELTA2
                                         pub.publish(command)
                         else:
                                 if command.linear.x > command2.linear.x:
@@ -162,9 +185,9 @@ def odomCallback(data):
 			        command.angular.z = 0.0
 			        isWaiting = 0
                         elif degree <= -(command.linear.z*DECELERATE_AT):
-                                if command.angular.z + SPEED_DELTA <= - MINIMUM_SPEED:
+                                if command.angular.z + SPEED_DELTA2 <= - MINIMUM_SPEED:
                                         print "decreasing speed!"
-                                        command.angular.z +=SPEED_DELTA
+                                        command.angular.z +=SPEED_DELTA2
                                         pub.publish(command)
                         else:
                                 if command.angular.z > command2.angular.z:
@@ -178,9 +201,9 @@ def odomCallback(data):
 			        command.angular.z = 0.0
 			        isWaiting = 0
                         elif degree >= (command.linear.z*DECELERATE_AT):
-                                if command.angular.z - SPEED_DELTA >= MINIMUM_SPEED:
+                                if command.angular.z - SPEED_DELTA2 >= MINIMUM_SPEED:
                                         print "decreasing speed!"
-                                        command.angular.z -= SPEED_DELTA
+                                        command.angular.z -= SPEED_DELTA2
                                         pub.publish(command)
                         else:
                                 if command.angular.z < command2.angular.z:
