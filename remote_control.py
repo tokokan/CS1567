@@ -2,6 +2,7 @@
 
 import rospy
 import math
+import time
 from std_msgs.msg import Empty
 from geometry_msgs.msg import Twist
 from kobuki_msgs.msg import BumperEvent
@@ -12,8 +13,9 @@ isWaiting = 0
 command = Twist()
 command2 = Twist()
 mode = 0
-
-
+state = 0
+deltatime = 0
+curtime = 0
 
 def send_commands():
     global pub
@@ -116,13 +118,15 @@ def odomCallback(data):
 	global command
 	global mode
         global command2
-        #time =0
-        state = 0
+        global state
+        global deltatime
+        global curtime
 
         SPEED_DELTA = 0.005
-        SPEED_DELTA2 = 0.01
-        DECELERATE_AT = 0.5 
+        SPEED_DELTA2 = 0.0075
+        DECELERATE_AT = 0.5
         MINIMUM_SPEED = 0.1
+        MAX_ACCEL = .5
         
         #do we need diferent SPEED_DELTA, DECELERATE_AT, MINIMUM_SPEED for turning?
         #turning use different speeds than movin forward/backward
@@ -133,18 +137,11 @@ def odomCallback(data):
          data.pose.pose.orientation.w]
 	roll, pitch, yaw = euler_from_quaternion(q)
     	degree = yaw * 180 / math.pi
-	if isWaiting == 1:
+
+        if isWaiting == 1:
 		print degree, command.linear.z, mode
 		if mode == 'F':
-                        if data.pose.pose.position.x >= command.linear.z:
-                                '''                                
-                                if state == 0:
-                                        time = time.clock()
-                                        state = 1
-                		else:
-                                        time -= time.clock()
-                                        print time
-                                '''	        
+                        if data.pose.pose.position.x >= command.linear.z:                              	        
                                 print "sending stop"		
 			        command.linear.x = 0.0
 			        command.angular.z = 0.0
@@ -156,7 +153,7 @@ def odomCallback(data):
                                         pub.publish(command)                                   
                         else:
                                 if command.linear.x < command2.linear.x:
-                                        print "increasing speed!"
+                                        print "increasing speed"
                                         command.linear.x += SPEED_DELTA 
                                         pub.publish(command)
                                       
