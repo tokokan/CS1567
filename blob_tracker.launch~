@@ -1,0 +1,16 @@
+<launch>
+        <!-- command: roslaunch gscam v41.launch -->
+        <include file ="$(find gscam)/v4l.launch"/>
+
+        <!-- command: roslaunch mypackage cmvision.launch -->
+        <include file ="$(find mypackage)/launch/cmvision.launch"/>
+
+        <!-- command: roslaunch kobiku_node minimal.launch -->
+        <include file ="$(find kobuki_node)/launch/minimal.launch"/>
+
+        <!-- command: rosrun mypackage constant_command2.py -->
+        <node name ="constant_command2" pkg="mypackage" type ="constant_command2.py"/>
+
+        <!-- command: rosrun mypackage blob_tracker.py -->
+        <node name ="blob_tracker" pkg="mypackage" type="blob_tracker.py"/>
+</launch>
